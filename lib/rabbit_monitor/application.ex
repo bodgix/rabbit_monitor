@@ -9,6 +9,7 @@ defmodule RabbitMonitor.Application do
     children = [
       # Starts a worker by calling: RabbitMonitor.Worker.start_link(arg)
       # {RabbitMonitor.Worker, arg}
+      {RabbitMonitor.Monitor, [host: "localhost", user: "guest", password: "guest", port: 5672]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
