@@ -22,7 +22,8 @@ defmodule RabbitMonitor.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:amqp, "~> 1.0"}
+      {:amqp, "~> 1.0"},
+      {:libcluster, "~> 3.3.1"}
     ]
   end
 end

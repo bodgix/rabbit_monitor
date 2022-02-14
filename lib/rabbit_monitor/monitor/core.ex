@@ -43,6 +43,18 @@ defmodule RabbitMonitor.Monitor.Core do
     :ok
   end
 
+  def get_receivers() do
+    receivers = :pg2.get_members(@pg2_group_name)
+    Logger.debug("Receivers are #{inspect(receivers)}")
+    receivers
+  end
+
+  def ping(chan, pid) do
+    exch = RabbitMonitor.Monitor.get_exchange(pid)
+    Logger.info("Exchange is #{exch}")
+    :ok = AMQP.Basic.publish(chan, exch, exch, "ping #{queue_name()}-pong")
+  end
+
   def check(chan) do
     receivers = :pg2.get_members(@pg2_group_name)
     Logger.info("Receivers are #{inspect(receivers)}")

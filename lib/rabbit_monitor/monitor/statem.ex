@@ -4,8 +4,9 @@ defmodule RabbitMonitor.Monitor.Statem do
 
   @behaviour :gen_statem
 
-  @check_delay 1000
+  @check_delay 10_000
   @pong_timeout 5000
+  @drain_duration 1000
 
   alias RabbitMonitor.Monitor.{Core, Ponger}
 
@@ -58,19 +59,29 @@ defmodule RabbitMonitor.Monitor.Statem do
 
   def connected(:info, {:basic_consume_ok, _msg}, chan) do
     Logger.info(":basic_consume_ok")
-    # {:keep_state_and_data, [{:next_event, :internal, :register}]}
+    {:next_state, :drain_queue, chan, [{:state_timeout, @drain_duration, :drain}]}
+  end
+
+  def drain_queue(:info, {:basic_deliver, msg, ctx}, chan) do
+    Logger.debug("Got an old message - discarding")
+    Core.ack_message(chan, ctx)
+    {:keep_state_and_data, [{:state_timeout, @drain_duration, :drain}]}
+  end
+
+  def drain_queue(:state_timeout, :drain, chan) do
+    Logger.debug("Finished draining the queue.")
     {:next_state, :ready, chan, [{:state_timeout, @check_delay, :check}]}
   end
 
-  def connected(:info, {:basic_deliver, msg, ctx}, chan) do
-    Logger.warn("Unexpected message #{inspect(msg)}")
-    Core.ack_message(chan, ctx)
-    :keep_state_and_data
+  def ready(:state_timeout, :check, chan) do
+    Logger.debug("Timeout triggered - running a check")
+    receivers = Core.get_receivers()
+    actions = Enum.map(receivers, fn pid -> {:next_event, :internal, {:ping, pid}} end)
+    {:keep_state_and_data, actions}
   end
 
-  def ready(:state_timeout, :check, chan) do
-    Logger.info("Timeout triggered")
-    Core.check(chan)
+  def ready(:internal, {:ping, pid}, chan) do
+    Core.ping(chan, pid)
     {:next_state, :wait_pong, chan, [{:state_timeout, @pong_timeout, :pong}]}
   end
 
