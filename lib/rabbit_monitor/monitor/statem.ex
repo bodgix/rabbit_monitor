@@ -24,10 +24,10 @@ defmodule RabbitMonitor.Monitor.Statem do
     :gen_statem.start_link(__MODULE__, opts, [])
   end
 
-  @impl :gen_statem
+  @impl true
   def callback_mode(), do: :state_functions
 
-  @impl :gen_statem
+  @impl true
   def init(init_arg) do
     {:ok, :disconnected, {init_arg, 0}, [{:state_timeout, 1000, :connect}]}
   end

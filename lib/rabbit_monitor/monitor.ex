@@ -5,6 +5,6 @@ defmodule RabbitMonitor.Monitor do
   defdelegate child_spec(opts), to: Supervisor
 
   def get_exchange(pid) do
-    GenServer.call(pid, :get_exchange)
+    :gen_statem.call(pid, :get_exchange)
   end
 end
