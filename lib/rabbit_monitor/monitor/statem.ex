@@ -33,7 +33,7 @@ defmodule RabbitMonitor.Monitor.Statem do
   end
 
   def disconnected(:state_timeout, :connect, {init_arg, delay}) do
-    Logger.info("Trying to connect with #{inspect(init_arg)}")
+    Logger.debug("Trying to connect with #{inspect(init_arg)}")
 
     with {:ok, chan} <- Core.connect_link(init_arg) do
       {:next_state, :connected, chan,
@@ -58,7 +58,7 @@ defmodule RabbitMonitor.Monitor.Statem do
   end
 
   def connected(:info, {:basic_consume_ok, _msg}, chan) do
-    Logger.info(":basic_consume_ok")
+    Logger.debug(":basic_consume_ok")
     {:next_state, :drain_queue, chan, [{:state_timeout, @drain_duration, :drain}]}
   end
 

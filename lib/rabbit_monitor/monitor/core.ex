@@ -13,7 +13,7 @@ defmodule RabbitMonitor.Monitor.Core do
   """
   @spec connect_link(list()) :: {:ok, term()} | {:error, term()}
   def connect_link(rmq_opts) do
-    Logger.info("Trying to connect with #{inspect(rmq_opts)}")
+    Logger.debug("Trying to connect with #{inspect(rmq_opts)}")
 
     with {:ok, conn} <- AMQP.Connection.open(rmq_opts),
          {:ok, chan} <- AMQP.Channel.open(conn) do
@@ -28,7 +28,7 @@ defmodule RabbitMonitor.Monitor.Core do
   end
 
   def subscribe_queue(chan, queue_name) do
-    Logger.info("Subscribing to #{queue_name}")
+    Logger.debug("Subscribing to #{queue_name}")
     {:ok, _} = AMQP.Queue.declare(chan, queue_name, durable: false)
     :ok = AMQP.Exchange.fanout(chan, queue_name, durable: false)
     :ok = AMQP.Queue.bind(chan, queue_name, queue_name)
@@ -37,7 +37,7 @@ defmodule RabbitMonitor.Monitor.Core do
   end
 
   def register() do
-    Logger.info("Registering in :pg2")
+    Logger.debug("Registering in :pg2")
     :ok = :pg2.create(@pg2_group_name)
     :ok = :pg2.join(@pg2_group_name, self())
     :ok
@@ -51,19 +51,9 @@ defmodule RabbitMonitor.Monitor.Core do
 
   def ping(chan, pid) do
     exch = RabbitMonitor.Monitor.get_exchange(pid)
-    Logger.info("Exchange is #{exch}")
+    Logger.debug("Exchange is #{exch}")
     :ok = AMQP.Basic.publish(chan, exch, exch, "ping #{queue_name()}-pong")
     exch
-  end
-
-  def check(chan) do
-    receivers = :pg2.get_members(@pg2_group_name)
-    Logger.info("Receivers are #{inspect(receivers)}")
-    exch = RabbitMonitor.Monitor.get_exchange(List.first(receivers))
-    # exch =
-    Logger.info("Exchange is #{exch}")
-
-    :ok = AMQP.Basic.publish(chan, exch, exch, "ping #{queue_name()}-pong")
   end
 
   def ack_message(chan, %{delivery_tag: tag}) do
@@ -72,7 +62,7 @@ defmodule RabbitMonitor.Monitor.Core do
   end
 
   def send_pong(chan, exch) do
-    Logger.info("Sending :pong to #{exch}")
+    Logger.debug("Sending :pong to #{exch}")
     AMQP.Basic.publish(chan, exch, exch, "pong #{queue_name()}")
   end
 

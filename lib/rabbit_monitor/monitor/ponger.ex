@@ -25,7 +25,7 @@ defmodule RabbitMonitor.Monitor.Ponger do
   end
 
   def unsubscribed(:info, {:basic_consume_ok, _msg}, state) do
-    Logger.info("Got subscription confirmation for ponger.")
+    Logger.debug("Got subscription confirmation for ponger.")
     {:next_state, :drain, state, [{:state_timeout, @drain_duration, :drain}]}
   end
 
@@ -54,7 +54,7 @@ defmodule RabbitMonitor.Monitor.Ponger do
   end
 
   def subscribed(:info, {:basic_deliver, "ping " <> reply_exch, ctx}, {conn, _queue_name} = state) do
-    Logger.info("Ponger got a Ping")
+    Logger.debug("Ponger got a Ping")
     Core.ack_message(conn, ctx)
     Core.send_pong(conn, reply_exch)
     :keep_state_and_data
