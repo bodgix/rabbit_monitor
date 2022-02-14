@@ -5,8 +5,9 @@ defmodule RabbitMonitor.Monitor.Statem do
   @behaviour :gen_statem
 
   @check_delay 1000
+  @pong_timeout 5000
 
-  alias RabbitMonitor.Monitor.Core
+  alias RabbitMonitor.Monitor.{Core, Ponger}
 
   def child_spec(opts) do
     %{
@@ -36,8 +37,8 @@ defmodule RabbitMonitor.Monitor.Statem do
     with {:ok, chan} <- Core.connect_link(init_arg) do
       {:next_state, :connected, chan,
        [
-         {:next_event, :internal, :subscribe_queue},
-         {:next_event, :internal, :register}
+         {:next_event, :internal, :start_ponger},
+         {:next_event, :internal, :subscribe_queue}
        ]}
     else
       err ->
@@ -45,19 +46,43 @@ defmodule RabbitMonitor.Monitor.Statem do
     end
   end
 
-  def connected(:internal, :subscribe_queue, chan) do
-    :ok = Core.subscribe_queue(chan)
+  def connected(:internal, :start_ponger, chan) do
+    {:ok, pid} = Ponger.start_link({chan, "#{Core.queue_name()}-ping"})
     :keep_state_and_data
   end
 
-  def connected(:internal, :register, _chan) do
-    :ok = Core.register()
-    {:keep_state_and_data, [{:state_timeout, @check_delay, :check}]}
+  def connected(:internal, :subscribe_queue, chan) do
+    :ok = Core.subscribe_queue(chan, "#{Core.queue_name()}-pong")
+    :keep_state_and_data
   end
 
-  def connected(:state_timeout, :check, chan) do
+  def connected(:info, {:basic_consume_ok, _msg}, chan) do
+    Logger.info(":basic_consume_ok")
+    # {:keep_state_and_data, [{:next_event, :internal, :register}]}
+    {:next_state, :ready, chan, [{:state_timeout, @check_delay, :check}]}
+  end
+
+  def connected(:info, {:basic_deliver, msg, ctx}, chan) do
+    Logger.warn("Unexpected message #{inspect(msg)}")
+    Core.ack_message(chan, ctx)
+    :keep_state_and_data
+  end
+
+  def ready(:state_timeout, :check, chan) do
     Logger.info("Timeout triggered")
-    Core.check()
-    {:keep_state_and_data, [{:state_timeout, @check_delay, :check}]}
+    Core.check(chan)
+    {:next_state, :wait_pong, chan, [{:state_timeout, @pong_timeout, :pong}]}
+  end
+
+  def ready(:info, {:basic_deliver, msg, ctx}, chan) do
+    Logger.warn("Unexpected message #{inspect(msg)}")
+    Core.ack_message(chan, ctx)
+    :keep_state_and_data
+  end
+
+  def wait_pong(:info, {:basic_deliver, "pong", ctx}, chan) do
+    Logger.info("Got PONG!")
+    Core.ack_message(chan, ctx)
+    {:next_state, :ready, chan, [{:state_timeout, @check_delay, :check}]}
   end
 end
