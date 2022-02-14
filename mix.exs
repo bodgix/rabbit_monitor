@@ -23,7 +23,9 @@ defmodule RabbitMonitor.MixProject do
   defp deps do
     [
       {:amqp, "~> 1.0"},
-      {:libcluster, "~> 3.3.1"}
+      {:libcluster, "~> 3.3.1"},
+      {:telemetry, "~> 1.0"},
+      {:telemetry_metrics_prometheus, "~> 1.0"}
     ]
   end
 end

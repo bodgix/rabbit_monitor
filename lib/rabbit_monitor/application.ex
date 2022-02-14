@@ -10,7 +10,8 @@ defmodule RabbitMonitor.Application do
       # Starts a worker by calling: RabbitMonitor.Worker.start_link(arg)
       # {RabbitMonitor.Worker, arg}
       {RabbitMonitor.Monitor, [host: "localhost", user: "guest", password: "guest", port: 5672]},
-      {Cluster.Supervisor, [libcluster_topologies(), [name: RabbitMonitor.ClusterSupervisor]]}
+      {Cluster.Supervisor, [libcluster_topologies(), [name: RabbitMonitor.ClusterSupervisor]]},
+      {TelemetryMetricsPrometheus, [metrics: metrics()]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
@@ -27,4 +28,19 @@ defmodule RabbitMonitor.Application do
       ]
     ]
   end
+
+  defp metrics,
+    do: [
+      Telemetry.Metrics.sum("rabbitmq.ping.done.rtt.microsecond",
+        tags: [:target],
+        unit: :microsecond,
+        event_name: [:rabbitmq, :ping, :done],
+        measurement: :rtt
+      ),
+      Telemetry.Metrics.counter("rabbitmq.ping.done.rtt.count",
+        tags: [:target],
+        event_name: [:rabbitmq, :ping, :done],
+        measurement: :rtt
+      )
+    ]
 end

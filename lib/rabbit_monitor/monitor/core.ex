@@ -72,7 +72,7 @@ defmodule RabbitMonitor.Monitor.Core do
 
   def send_pong(chan, exch) do
     Logger.info("Sending :pong to #{exch}")
-    AMQP.Basic.publish(chan, exch, exch, "pong")
+    AMQP.Basic.publish(chan, exch, exch, "pong #{queue_name()}")
   end
 
   def queue_name(), do: Node.self() |> Atom.to_string()

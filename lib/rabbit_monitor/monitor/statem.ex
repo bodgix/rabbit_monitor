@@ -87,7 +87,8 @@ defmodule RabbitMonitor.Monitor.Statem do
 
   def send_ping(:internal, :send_ping, {chan, [pid | rest]} = state) do
     Core.ping(chan, pid)
-    {:next_state, :wait_pong, {chan, rest}, [{:state_timeout, @pong_timeout, :pong_timeout}]}
+    t1 = :erlang.monotonic_time(:microsecond)
+    {:next_state, :wait_pong, {chan, rest, t1}, [{:state_timeout, @pong_timeout, :pong_timeout}]}
   end
 
   def send_ping(:internal, :send_ping, {chan, []} = _state) do
@@ -95,10 +96,18 @@ defmodule RabbitMonitor.Monitor.Statem do
     {:next_state, :ready, chan, [{:state_timeout, @check_delay, :check}]}
   end
 
-  def wait_pong(:info, {:basic_deliver, "pong", ctx}, {chan, pids} = state) do
-    Logger.info("Got PONG!")
+  def wait_pong(:info, {:basic_deliver, "pong " <> from, ctx}, {chan, pids, t1} = state) do
+    t2 = :erlang.monotonic_time(:microsecond)
+    Logger.debug("Got PONG! from #{from}")
     Core.ack_message(chan, ctx)
-    {:next_state, :send_ping, state, [{:next_event, :internal, :send_ping}]}
+
+    :telemetry.execute(
+      [:rabbitmq, :ping, :done],
+      %{rtt: t2 - t1},
+      %{target: from}
+    )
+
+    {:next_state, :send_ping, {chan, pids}, [{:next_event, :internal, :send_ping}]}
   end
 
   def wait_pong(:state_timeout, :pong_timeout, state) do

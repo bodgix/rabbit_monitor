@@ -11,8 +11,6 @@ defmodule RabbitMonitor.Monitor.Supervisor do
   def init(init_arg) do
     children = [
       {Statem, init_arg}
-      # {DynamicSupervisor,
-      #  [name: RabbitMonitor.Monitor.ListenerSupervisor, strategy: :one_for_one]}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
