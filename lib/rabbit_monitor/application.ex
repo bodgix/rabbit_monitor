@@ -41,6 +41,11 @@ defmodule RabbitMonitor.Application do
         tags: [:target],
         event_name: [:rabbitmq, :ping, :done],
         measurement: :rtt
+      ),
+      Telemetry.Metrics.counter("rabbitmq.ping.timeout.rtt.microsecond.count",
+        tags: [:target],
+        event_name: [:rabbitmq, :ping, :timeout],
+        measurement: :rtt
       )
     ]
 end

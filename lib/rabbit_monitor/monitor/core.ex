@@ -53,6 +53,7 @@ defmodule RabbitMonitor.Monitor.Core do
     exch = RabbitMonitor.Monitor.get_exchange(pid)
     Logger.info("Exchange is #{exch}")
     :ok = AMQP.Basic.publish(chan, exch, exch, "ping #{queue_name()}-pong")
+    exch
   end
 
   def check(chan) do
