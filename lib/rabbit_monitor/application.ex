@@ -31,13 +31,13 @@ defmodule RabbitMonitor.Application do
 
   defp metrics,
     do: [
-      Telemetry.Metrics.sum("rabbitmq.ping.done.rtt.microsecond",
+      Telemetry.Metrics.sum("rabbitmq.ping.done.rtt.microsecond.sum",
         tags: [:target],
         unit: :microsecond,
         event_name: [:rabbitmq, :ping, :done],
         measurement: :rtt
       ),
-      Telemetry.Metrics.counter("rabbitmq.ping.done.rtt.count",
+      Telemetry.Metrics.counter("rabbitmq.ping.done.rtt.microsecond.count",
         tags: [:target],
         event_name: [:rabbitmq, :ping, :done],
         measurement: :rtt
