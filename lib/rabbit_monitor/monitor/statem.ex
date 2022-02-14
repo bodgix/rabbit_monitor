@@ -76,13 +76,7 @@ defmodule RabbitMonitor.Monitor.Statem do
   def ready(:state_timeout, :check, chan) do
     Logger.debug("Timeout triggered - running a check")
     receivers = Core.get_receivers()
-    actions = Enum.map(receivers, fn pid -> {:next_event, :internal, {:ping, pid}} end)
-    {:keep_state_and_data, actions}
-  end
-
-  def ready(:internal, {:ping, pid}, chan) do
-    Core.ping(chan, pid)
-    {:next_state, :wait_pong, chan, [{:state_timeout, @pong_timeout, :pong}]}
+    {:next_state, :send_ping, {chan, receivers}, [{:next_event, :internal, :send_ping}]}
   end
 
   def ready(:info, {:basic_deliver, msg, ctx}, chan) do
@@ -91,9 +85,24 @@ defmodule RabbitMonitor.Monitor.Statem do
     :keep_state_and_data
   end
 
-  def wait_pong(:info, {:basic_deliver, "pong", ctx}, chan) do
+  def send_ping(:internal, :send_ping, {chan, [pid | rest]} = state) do
+    Core.ping(chan, pid)
+    {:next_state, :wait_pong, {chan, rest}, [{:state_timeout, @pong_timeout, :pong_timeout}]}
+  end
+
+  def send_ping(:internal, :send_ping, {chan, []} = _state) do
+    Logger.debug("Sent all pings to all receivers")
+    {:next_state, :ready, chan, [{:state_timeout, @check_delay, :check}]}
+  end
+
+  def wait_pong(:info, {:basic_deliver, "pong", ctx}, {chan, pids} = state) do
     Logger.info("Got PONG!")
     Core.ack_message(chan, ctx)
-    {:next_state, :ready, chan, [{:state_timeout, @check_delay, :check}]}
+    {:next_state, :send_ping, state, [{:next_event, :internal, :send_ping}]}
+  end
+
+  def wait_pong(:state_timeout, :pong_timeout, state) do
+    Logger.error("Pong TIMEOUT!!")
+    {:next_state, :send_ping, state, [{:next_event, :internal, :send_ping}]}
   end
 end

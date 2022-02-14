@@ -33,7 +33,7 @@ defmodule RabbitMonitor.Monitor.Ponger do
     {:stop, {:error, :subscribe_timeout}}
   end
 
-  def drain(:info, {:basic_deliver, "ping " <> reply_exch, ctx}, {conn, _queue_name} = _state) do
+  def drain(:info, {:basic_deliver, _msg, ctx}, {conn, _queue_name} = _state) do
     Logger.debug("Ponger draining an old message")
     Core.ack_message(conn, ctx)
     {:keep_state_and_data, [{:state_timeout, @drain_duration, :drain}]}
