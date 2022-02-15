@@ -4,6 +4,8 @@ defmodule RabbitMonitor.Monitor.Statem do
 
   @behaviour :gen_statem
 
+  @connect_delay 1000
+  @max_connect_delay 10_000
   @check_delay 10_000
   @pong_timeout 5000
   @drain_duration 1000
@@ -29,7 +31,7 @@ defmodule RabbitMonitor.Monitor.Statem do
 
   @impl true
   def init(init_arg) do
-    {:ok, :disconnected, {init_arg, 0}, [{:state_timeout, 1000, :connect}]}
+    {:ok, :disconnected, {init_arg, 0}, [{:state_timeout, 1, :connect}]}
   end
 
   def disconnected(:state_timeout, :connect, {init_arg, delay}) do
@@ -43,7 +45,11 @@ defmodule RabbitMonitor.Monitor.Statem do
        ]}
     else
       err ->
-        {:keep_state, {init_arg, delay + 1000}, [{:state_timeout, delay, :connect}]}
+        new_delay =
+          (delay + @connect_delay > @max_connect_delay && delay + @connect_delay) ||
+            @max_connect_delay
+
+        {:keep_state, {init_arg, new_delay}, [{:state_timeout, new_delay, :connect}]}
     end
   end
 
